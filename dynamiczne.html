@@ -1,0 +1,771 @@
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js"></script>
+<script src="http://code.jquery.com/jquery-latest.min.js"></script>
+<!-- bootstrap 4 | dropdown button works | modal button does not work -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/js/bootstrap.min.js"></script>
+<!-- bootstrap 5 | dropdown button does not work | modal button works -->
+<!--<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/js/bootstrap.bundle.min.js"></script>-->
+<script type="text/javascript" src="./js/tablesorter/jquery.tablesorter.js"></script>
+
+<script>
+	// Globals
+	var name_element;
+	var code_element;
+	var netto_element;
+	var vat_element;
+	var brutto_element;
+	var category_element;
+	var rating_element;
+	var photo_element;
+	
+	var checkbox1_element;
+	var checkbox2_element;
+	var checkbox3_element;
+	var checkbox4_element;
+	var checkbox5_element;
+	
+	var name_err_msg_element;
+	var code_err_msg_element;
+	var netto_err_msg_element;
+	var vat_err_msg_element;
+	var brutto_err_msg_element;
+	var option_err_msg_element;
+	var photo_err_msg_element;
+	
+	// Regular expressions for validation
+	var vat_exp = /^[0-9]{1,2}$/;
+	var name_exp = /^[A-Za-z]{1,10}$/;
+	var code_exp = /^[0-9A-Za-z]{2}-[0-9A-Za-z]{2}$/;
+	var netto_comma2_exp = /^[0-9]{1,30}\.[0-9]{2}$/;
+	var netto_comma1_exp = /^[0-9]{1,30}(\.[0-9]){1}$/;
+	var netto_no_comma_exp = /^[0-9]{1,30}$/;
+	var photo_exp = /^[0-9A-Za-z]/;
+	
+	var netto_valid = false;
+	var vat_valid = false;
+	var products_counter = 5;
+	var edit_mode = false;
+	
+	// Init when document is ready
+	window.addEventListener('load',
+		function() {
+			name_element = document.getElementById("name");
+			code_element = document.getElementById("code");
+			netto_element = document.getElementById("netto");
+			vat_element = document.getElementById("vat");
+			brutto_element = document.getElementById("brutto");
+			category_element = document.getElementById("category");
+			photo_element = document.getElementById("photo");
+			
+			radio1_element = document.getElementById("optionsRadios1");
+			radio2_element = document.getElementById("optionsRadios2");
+			radio3_element = document.getElementById("optionsRadios3");
+			radio4_element = document.getElementById("optionsRadios4");
+			radio5_element = document.getElementById("optionsRadios5");
+			
+			checkbox1_element = document.getElementById("chkbox_option1");
+			checkbox2_element = document.getElementById("chkbox_option2");
+			checkbox3_element = document.getElementById("chkbox_option3");
+			checkbox4_element = document.getElementById("chkbox_option4");
+			checkbox5_element = document.getElementById("chkbox_option5");
+		
+			name_err_msg_element = document.getElementById("name_error_msg");
+			code_err_msg_element = document.getElementById("code_error_msg");
+			netto_err_msg_element = document.getElementById("netto_error_msg");
+			vat_err_msg_element = document.getElementById("vat_error_msg");
+			brutto_err_msg_element = document.getElementById("brutto_error_msg");
+			option_err_msg_element = document.getElementById("option_error_msg");
+			photo_err_msg_element = document.getElementById("photo_error_msg");
+		}, false
+	);
+	
+	function validate_name()
+	{
+		var name_val = name_element.value;
+		
+		if (name_val.match(name_exp))
+		{
+			name_err_msg_element.innerHTML = "";
+			return true;
+		}
+		else
+		{
+			name_err_msg_element.innerHTML = "Pole obowiązkowe: Duże/Małe litery | Max 10 znaków";
+			return false;
+		}
+	}
+	
+	function validate_code()
+	{
+		var code_val = code_element.value;
+		
+		if (code_val.match(code_exp))
+		{
+			code_err_msg_element.innerHTML = "";
+			return true;
+		}
+		else
+		{
+			code_err_msg_element.innerHTML = "Pole obowiązkowe: Duże/Małe litery | Cyfry | Format: XX-XX";
+			return false;
+		}
+	}
+	
+	function validate_netto()
+	{
+		var netto_val = netto_element.value;
+		
+		if (netto_val.match(netto_comma2_exp))
+		{
+			netto_err_msg_element.innerHTML = "";
+			netto_valid = true;
+			count_brutto();
+		}
+		else if (netto_val.match(netto_no_comma_exp))
+		{
+			netto_element.value = netto_val + ".00";
+			netto_err_msg_element.innerHTML = "";
+			netto_valid = true;
+			count_brutto();
+		}
+		else if (netto_val.match(netto_comma1_exp))
+		{
+			netto_element.value = netto_val + "0";
+			netto_err_msg_element.innerHTML = "";
+			netto_valid = true;
+			count_brutto();
+		}
+		else
+		{
+			netto_err_msg_element.innerHTML = "Pole obowiązkowe: Tylko cyfry";
+			netto_valid = false;
+		}
+		
+		return netto_valid;
+	}
+	
+	function validate_vat()
+	{
+		var vat_val = vat_element.value;
+		
+		if (vat_val.match(vat_exp))
+		{
+			vat_err_msg_element.innerHTML = "";
+			vat_valid = true;
+			count_brutto();
+		}
+		else
+		{
+			vat_valid = false;
+			vat_err_msg_element.innerHTML = "Pole obowiązkowe: Tylko cyfry";
+		}
+		
+		return vat_valid;
+	}
+	
+	function count_brutto()
+	{
+		if ((vat_valid == true) && (netto_valid == true))
+		{
+			brutto_element.value = parseInt(netto_element.value) + (parseInt(netto_element.value) * parseInt(vat_element.value) / 100);
+		}
+	}
+	
+	function validate_options()
+	{
+		var checked_num = 0;
+		if (checkbox1_element.checked == true) checked_num++;
+		if (checkbox2_element.checked == true) checked_num++;
+		if (checkbox3_element.checked == true) checked_num++;
+		if (checkbox4_element.checked == true) checked_num++;
+		if (checkbox5_element.checked == true) checked_num++;
+		
+		if (checked_num >= 2)
+		{
+			option_err_msg_element.innerHTML="";
+			return true;
+		}
+		else
+		{
+			option_err_msg_element.innerHTML="Przynajmniej 2 opcje muszą być zaznaczone"
+			return false;
+		}
+	}
+	
+	function validate_photo()
+	{
+		var photo_val = photo_element.value;
+		
+		if (photo_val.match(photo_exp))
+		{
+			photo_err_msg_element.innerHTML = "";
+			return true;
+		}
+		else
+		{
+			photo_err_msg_element.innerHTML = "Pole obowiązkowe: Duże/Małe litery | Cyfry";
+			return false;
+		}
+	}
+	
+	function validate_form()
+	{
+		$("#table_error_msg").html("");
+		var valid = true;
+		
+		if (validate_name() != true) valid = false;
+		if (validate_code() != true) valid = false;
+		if (validate_netto() != true) valid = false;
+		if (validate_vat() != true) valid = false;
+		if (validate_options() != true) valid = false;
+		
+		if (valid == true)
+		{
+			save_product();
+		}
+	}
+	
+	function save_product()
+	{
+		if (edit_mode == true)
+		{
+			for (i = 0; i <= products_counter; i++) 
+			{
+				var chkbox_id = "#chkbox_tblrow" + i;
+				if ($(chkbox_id).is(':checked'))
+				{
+					var tbl_row_id = "#tbl_row" + i;
+					var first_option = true;
+					var options = "";
+					var rating = "";
+					
+					$(tbl_row_id).find('td:eq(1)').html(name_element.value);
+					$(tbl_row_id).find('td:eq(2)').html(code_element.value);
+					$(tbl_row_id).find('td:eq(3)').html(netto_element.value);
+					$(tbl_row_id).find('td:eq(4)').html(vat_element.value);
+					$(tbl_row_id).find('td:eq(5)').html(brutto_element.value);
+					$(tbl_row_id).find('td:eq(6)').html(category_element.value);
+					
+					if (checkbox1_element.checked == true)
+					{
+						options += "1";
+						first_option = false;
+					}
+					if (checkbox2_element.checked == true)
+					{
+						if (!first_option) options += ", "
+						options += "2";
+						first_option = false;
+					}
+					if (checkbox3_element.checked == true)
+					{
+						if (!first_option) options += ", "
+						options += "3";
+						first_option = false;
+					}
+					if (checkbox4_element.checked == true)
+					{
+						if (!first_option) options += ", "
+						options += "4";
+						first_option = false;
+					}
+					if (checkbox5_element.checked == true)
+					{
+						if (!first_option) options += ", "
+						options += "5";
+						first_option = false;
+					}
+					
+					if (radio1_element.checked == true) rating="1";
+					else if (radio2_element.checked == true) rating="2";
+					else if (radio3_element.checked == true) rating="3";
+					else if (radio4_element.checked == true) rating="4";
+					else rating="5";
+					
+					$(tbl_row_id).find('td:eq(7)').html(options);
+					$(tbl_row_id).find('td:eq(8)').html(rating);
+					$(tbl_row_id).find('td:eq(9)').html(photo_element.value);
+				}
+			}
+			
+			edit_mode = false;
+		}
+		else
+		{
+			if (is_product_in_table(name_element.value) === false)
+			{
+				products_counter++;
+				var new_row = $("<tr id=tbl_row" + products_counter + ">");
+				var cols = "";
+				var options = "";
+				var rating = "";
+				
+				var first_option = true;
+				
+				if (checkbox1_element.checked == true)
+				{
+					options += "1";
+					first_option = false;
+				}
+				if (checkbox2_element.checked == true)
+				{
+					if (!first_option) options += ", "
+					options += "2";
+					first_option = false;
+				}
+				if (checkbox3_element.checked == true)
+				{
+					if (!first_option) options += ", "
+					options += "3";
+					first_option = false;
+				}
+				if (checkbox4_element.checked == true)
+				{
+					if (!first_option) options += ", "
+					options += "4";
+					first_option = false;
+				}
+				if (checkbox5_element.checked == true)
+				{
+					if (!first_option) options += ", "
+					options += "5";
+					first_option = false;
+				}
+				
+				if (radio1_element.checked == true) rating="1";
+				else if (radio2_element.checked == true) rating="2";
+				else if (radio3_element.checked == true) rating="3";
+				else if (radio4_element.checked == true) rating="4";
+				else rating="5";
+			
+				cols += '<td> <input id="chkbox_tblrow' + products_counter + '" type="checkbox">';
+				cols += '<th scope="row">' + products_counter + '</th>';
+				cols += "<td>" + name_element.value + "</td>";
+				cols += "<td>" + code_element.value + "</td>";
+				cols += "<td>" + netto_element.value + "</td>";
+				cols += "<td>" + vat_element.value + "</td>";
+				cols += "<td>" + brutto_element.value + "</td>";
+				cols += "<td>" + category_element.value + "</td>";
+				cols += "<td>" + options + "</td>";
+				cols += "<td>" + rating + "</td>";
+				cols += "<td>" + photo_element.value + "</td>";
+				
+				new_row.append(cols);
+			
+				$("#tbl_products").find("tbody").append(new_row);
+				$("#table_error_msg").html("");
+				$("#tbl_products").trigger("update"); 
+			}
+		}
+	}
+	
+	function is_product_in_table(name)
+	{
+		var is_product = false;
+
+		$('table tr').each(function() {
+			if( ($(this).find('td').eq(1).text()) === name)
+			{
+				$("#table_error_msg").html("<br><br>Produkt już istnieje");
+				is_product = true;
+				return;
+			}
+		});
+		
+		return is_product;
+	}
+	
+	function sort_price_asc()
+	{
+		console.log("Sort price ascending");
+		$("#tbl_products").trigger("sorton", [ [[4,"a"]] ]);
+	}
+	
+	function sort_price_desc()
+	{
+		console.log("Sort price descending");
+		$("#tbl_products").trigger("sorton", [ [[4,"d"]] ]);
+	}
+	
+	function sort_grade_asc()
+	{
+		console.log("Sort grade ascending");
+		$("#tbl_products").trigger("sorton", [ [[9,"a"]] ]);
+	}
+	
+	function sort_grade_desc()
+	{
+		console.log("Sort grade descending");
+		$("#tbl_products").trigger("sorton", [ [[9,"d"]] ]);
+	}
+	
+	function sort_name_asc()
+	{
+		console.log("Sort name ascending");
+		$("#tbl_products").trigger("sorton", [ [[2,"a"]] ]);
+	}
+	
+	function sort_name_desc()
+	{
+		console.log("Sort name descending");
+		$("#tbl_products").trigger("sorton", [ [[2,"d"]] ]);
+	}
+	
+	$(document).ready(function() { 
+		$("#tbl_products").tablesorter({
+			theme: 'blue',
+			headers: {
+				'.hash, .code, .vat, .brutto, .category, .options, .photo' : { sorter: false }
+			}
+		}); 
+				
+		$('#btn_delete').on('click', function (e) {
+
+			for (i = 0; i <= products_counter; i++) {
+				var chkbox_id = "#chkbox_tblrow" + i;
+				if ($(chkbox_id).is(':checked'))
+				{
+					var tbl_row_id = "#tbl_row" + i;
+					$(tbl_row_id).remove();
+				}
+			}
+		})
+		
+		$('#btn_edit').on('click', function (e) {
+
+			for (i = 0; i <= products_counter; i++) {
+				var chkbox_id = "#chkbox_tblrow" + i;
+				if ($(chkbox_id).is(':checked'))
+				{
+					var tbl_row_id = "#tbl_row" + i;
+					$('#name').val($(tbl_row_id).find('td:eq(1)').text());
+					$('#code').val($(tbl_row_id).find('td:eq(2)').text());
+					$('#netto').val($(tbl_row_id).find('td:eq(3)').text());
+					$('#vat').val($(tbl_row_id).find('td:eq(4)').text());
+					$('#brutto').val($(tbl_row_id).find('td:eq(5)').text());
+					$('#category').val($(tbl_row_id).find('td:eq(6)').text());
+					
+					var options = $(tbl_row_id).find('td:eq(7)').text();
+					if (options.indexOf("1") >= 0) checkbox1_element.checked = true;
+					else checkbox1_element.checked = false;
+					if (options.indexOf("2") >= 0) checkbox2_element.checked = true;
+					else checkbox2_element.checked = false;
+					if (options.indexOf("3") >= 0) checkbox3_element.checked = true;
+					else checkbox3_element.checked = false;
+					if (options.indexOf("4") >= 0) checkbox4_element.checked = true;
+					else checkbox4_element.checked = false;
+					if (options.indexOf("5") >= 0) checkbox5_element.checked = true;
+					else checkbox5_element.checked = false;
+						
+					var rating = $(tbl_row_id).find('td:eq(8)').text();
+					if (rating == '1') radio1_element.checked = true;
+					else if (rating == '2') radio2_element.checked = true;
+					else if (rating == '3') radio3_element.checked = true;
+					else if (rating == '4') radio4_element.checked = true;
+					else radio5_element.checked = true;
+					
+					$('#photo').val($(tbl_row_id).find('td:eq(9)').text());
+					return;
+				}
+				
+				edit_mode = true;
+			}
+		})
+    });
+    
+</script>
+<title>Programowanie Dokumentow Dynamicznych</title>
+
+<!-- bootstrap CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css" integrity="sha384-Zug+QiDoJOrZ5t4lssLdxGhVrurbmBWopoEl+M6BdEfwnCJZtKxi1KgxUyJq13dy" crossorigin="anonymous">
+</head>
+
+<style>
+    body{
+        padding-top: 70px;
+		padding-bottom: 70px;
+    }
+	
+	html {
+		position: relative;
+		min-height: 100%;
+	}
+
+	body {
+		margin-bottom: 60px; /* Margin bottom by footer height */
+	}
+
+	.footer {
+		position: absolute;
+		bottom: 0;
+		width: 100%;
+		height: 60px; /* Set the fixed height of the footer here */
+		line-height: 60px; /* Vertically center the text there */
+		background-color: #f5f5f5;
+	}
+</style>
+
+<body>
+	<nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+		<div class="container">
+			<a href="#" class="navbar-brand d-flex align-items-center"><strong>PDD Laboratoria</strong></a>
+			<div class="collapse navbar-collapse" id="navbarCollapse">
+				<div class="navbar-nav">
+					<a href="#" class="nav-item nav-link active">Główna</a>
+					<a href="http://lcieszynski.zut.edu.pl/fileadmin/DPD/instrukcja_2019.pdf" class="nav-item nav-link active">Instrukcja</a>
+				</div>
+			</div>
+			<ul class="nav navbar-nav ml-auto navbar-right" role="navigation">
+				<li>
+					<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModalLive">Koszyk</button>
+				</li>
+			</ul>
+		</div>
+	</nav>
+	
+	<div class="modal fade" id="exampleModalLive" tabindex="-1" aria-labelledby="exampleModalLiveLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLiveLabel">Koszyk</h5>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+				</div>
+				<div class="modal-body">
+					<p>Zawartość koszyka</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+					<button type="button" class="btn btn-primary">Zapłać</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+
+	<div class="containner">
+		<div class="row">
+			<div class="col-md-2"></div>
+			<div class="col-md-8">
+				<form action="javascript:validate_form()" method="post">
+					<div class="form-group">
+						<label for="name">Nazwa towaru:</label>
+						<input type="text" class="form-control" id="name" placeholder="Nazwa towaru" onblur="validate_name()">
+						<small id="name_error_msg" class="form-text text-muted"></small>
+					</div>
+					<br>
+					
+					<div class="form-group">
+						<label for="code">Kod towaru:</label>
+						<input type="text"  class="form-control" id="code" placeholder="Kod towaru" onblur="validate_code()">
+						<small id="code_error_msg" class="form-text text-muted"></small>
+					</div>
+					<br>
+					
+					<div class="form-group">
+						<label for="netto">Cena netto:</label>
+						<input type="text"  class="form-control" id="netto" placeholder="Cena netto" onblur="validate_netto()">
+						<small id="netto_error_msg" class="form-text text-muted"></small>
+					</div>
+					<br>
+					
+					<div class="form-group">
+						<label for="vat">Stawka VAT:</label>
+						<input type="text"  class="form-control" id="vat" placeholder="Stawka VAT" onblur="validate_vat()">
+						<small id="vat_error_msg" class="form-text text-muted"></small>
+					</div>
+					<br>
+					
+					<div class="form-group">
+						<label for="brutto">Cena brutto:</label>
+						<input type="text"  class="form-control" id="brutto" placeholder="Cena brutto">
+						<small id="brutto_error_msg" class="form-text text-muted"></small>
+					</div>
+					<br>
+					
+					<div class="form-group">
+						<label for="category">Kategoria towarowa:</label>
+						<select class="form-control" id="category">
+							<option>Kategoria 1</option>
+							<option>Kategoria 2</option>
+							<option>Kategoria 3</option>
+						</select>
+					</div>
+					<br>
+					
+					<fieldset class="form-group">
+					<legend class="col-form-legend col-md2">Opcje towaru:</legend>
+						<div class="form-check">
+							<label class="form-check-label"><input id="chkbox_option1" type="checkbox" class="form-check-input">Opcja 1</label>
+						</div>
+						<div class="form-check">
+							<label class="form-check-label"><input id="chkbox_option2" type="checkbox" class="form-check-input">Opcja 2</label>
+						</div>
+						<div class="form-check">
+							<label class="form-check-label"><input id="chkbox_option3" type="checkbox" class="form-check-input">Opcja 3</label>
+						</div>
+						<div class="form-check">
+							<label class="form-check-label"><input id="chkbox_option4" type="checkbox" class="form-check-input">Opcja 4</label>
+						</div>
+						<div class="form-check">
+							<label class="form-check-label"><input id="chkbox_option5" type="checkbox" class="form-check-input">Opcja 5</label>
+						</div>
+						<small id="option_error_msg" class="form-text text-muted"></small>
+					</fieldset>
+					<br>
+					
+					<fieldset class="form-group">
+							<legend class="col-form-legend col-md2">Ocena towaru:</legend>
+							<div class="form-check">
+							<label class="form-check-label">
+								<input type="radio" class="form-check-input" name="optionsRadios" id="optionsRadios1" value="option1" checked>1</label>
+							</div>
+							<div class="form-check">
+								<label class="form-check-label">
+								<input type="radio" class="form-check-input" name="optionsRadios" id="optionsRadios2" value="option2">2</label>
+							</div>
+							<div class="form-check">
+								<label class="form-check-label">
+								<input type="radio" class="form-check-input" name="optionsRadios" id="optionsRadios3" value="option2">3</label>
+							</div>
+							<div class="form-check">
+								<label class="form-check-label">
+								<input type="radio" class="form-check-input" name="optionsRadios" id="optionsRadios4" value="option2">4</label>
+							</div>
+							<div class="form-check">
+								<label class="form-check-label">
+								<input type="radio" class="form-check-input" name="optionsRadios" id="optionsRadios5" value="option2">5</label>
+							</div>
+					</fieldset>
+					<br>
+					
+					<div class="form-group">
+						<label for="photo">Zdjęcie:</label>
+						<input type="text" class="form-control" id="photo" placeholder="Zdjęcie towaru" onblur="validate_photo()">
+						<small id="photo_error_msg" class="form-text text-muted"></small>
+					</div>
+					<br>
+					
+					<button id="btn_submit" type="submit" class="btn btn-primary">Zapisz</button>
+					<small id="table_error_msg" class="form-text text-muted"></small>
+				</form>
+			<!-- 60% column -->
+			
+			<table id="tbl_products" class="tablesorter table table-hover">
+				<thead>
+					<tr id="tbl_row0">
+						<th></th>
+						<th class="hash">#</th>
+						<th>Nazwa</th>
+						<th class="code">Kod</th>
+						<th>Netto</th>
+						<th class="vat">VAT</th>
+						<th class="brutto">Brutto</th>
+						<th class="category">Kategoria</th>
+						<th class="options">Opcje</th>
+						<th>Ocena</th>
+						<th class="photo">Zdjęcie</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr id="tbl_row1">
+						<td><input id="chkbox_tblrow1" type="checkbox"></td>
+						<th scope="row">1</th>
+						<td>Lenovo</td>
+						<td>A1-Z3</td>
+						<td>2000.00</td>
+						<td>10</td>
+						<td>2100</td>
+						<td>Kategoria 1</td>
+						<td>2, 4</td>
+						<td>5</td>
+						<td>lenovo.jpg</td>
+					</tr>
+					<tr id="tbl_row2">
+						<td><input id="chkbox_tblrow2" type="checkbox"></td>
+						<th scope="row">2</th>
+						<td>Samsung</td>
+						<td>V5-43</td>
+						<td>1000.00</td>
+						<td>22</td>
+						<td>1220</td>
+						<td>Kategoria 2</td>
+						<td>1, 2</td>
+						<td>1</td>
+						<td>samsung.jpg</td>
+					</tr>
+					<tr id="tbl_row3">
+						<td><input id="chkbox_tblrow3" type="checkbox"></td>
+						<th scope="row">3</th>
+						<td>HTC</td>
+						<td>0Y-B5</td>
+						<td>5000.00</td>
+						<td>5</td>
+						<td>5250</td>
+						<td>Kategoria 3</td>
+						<td>3, 5</td>
+						<td>2</td>
+						<td>htc.jpg</td>
+					</tr>
+					<tr id="tbl_row4">
+						<td><input id="chkbox_tblrow4" type="checkbox"></td>
+						<th scope="row">4</th>
+						<td>Amica</td>
+						<td>AA-BB</td>
+						<td>1500.00</td>
+						<td>3</td>
+						<td>1350</td>
+						<td>Kategoria 2</td>
+						<td>1, 3</td>
+						<td>1</td>
+						<td>amica.jpg</td>
+					</tr>
+					<tr id="tbl_row5">
+						<td><input id="chkbox_tblrow5" type="checkbox"></td>
+						<th scope="row">5</th>
+						<td>Playstation 5</td>
+						<td>X1-12</td>
+						<td>2399.00</td>
+						<td>2</td>
+						<td>1234</td>
+						<td>Kategoria 1</td>
+						<td>2, 5</td>
+						<td>5</td>
+						<td>ps5.jpg</td>
+					</tr>
+				</tbody>
+			</table>
+	
+			<div class="dropdown">
+			  <button class="btn btn-primary dropdown-toggle" type="button" id="dropdown_sort" data-toggle="dropdown">Sortuj</button>
+			  <div class="dropdown-menu">
+				<a class="dropdown-item" onclick="sort_price_asc()">Cena: Od najniższej</a>
+				<a class="dropdown-item" onclick="sort_price_desc()">Cena: Od najwyższej</a>
+				<a class="dropdown-item" onclick="sort_grade_asc()">Ocena: Od najniższej</a>
+				<a class="dropdown-item" onclick="sort_grade_desc()">Ocena: Od najwyższej</a>
+				<a class="dropdown-item" onclick="sort_name_asc()">Nazwa: Od A</a>
+				<a class="dropdown-item" onclick="sort_name_desc()">Nazwa: Od Z</a>
+			  </div>
+			  <button id="btn_delete" type="submit" class="btn btn-primary">Usuń</button>
+			  <button id="btn_edit" type="submit" class="btn btn-primary">Edytuj</button>
+			</div>
+
+		</div>
+		<div class="col-md-2"></div>
+		<!-- row -->
+		</div>
+	<!-- container -->
+	</div>
+
+	<footer class="footer bg-dark">  
+		<div class="container">
+			<div class="row center">
+				<p class="col-xs-9" style="color:#fff">Programowanie Dokumentów Dynamicznych - Łukasz Dmitrowski</p> 
+			</div>
+		</div>
+    </footer>
+	
+</body>
+</html>
